@@ -1,0 +1,9 @@
+{
+  "clickup": {
+    "name": "ClickUp",
+    "category": "Productivity",
+    "description": "ClickUp Desktop application for Linux",
+    "homepage": "https://clickup.com",
+    "download_url": "https://desktop.clickup.com/linux"
+  }
+}

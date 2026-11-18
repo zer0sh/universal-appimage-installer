@@ -1,0 +1,5 @@
+/target
+
+# AppImages locales (binarios grandes, no deben versionarse)
+/appimage/
+*.AppImage
