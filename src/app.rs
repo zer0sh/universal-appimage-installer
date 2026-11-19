@@ -9,12 +9,12 @@ use crate::downloader;
 use crate::registry::{self, InstalledApp};
 
 pub const MAIN_MENU_ITEMS: [&str; 6] = [
-    "Descargar AppImage",
-    "Instalar",
-    "Actualizar",
-    "Eliminar",
-    "Ayuda",
-    "Salir",
+    "Download AppImage",
+    "Install",
+    "Update",
+    "Delete",
+    "Help",
+    "Quit",
 ];
 
 pub enum Screen {

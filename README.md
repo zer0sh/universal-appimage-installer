@@ -1,145 +1,137 @@
 # Universal AppImage Installer (`uai`)
 
-Aplicación de terminal (TUI) escrita en Rust para **descargar, instalar y desinstalar AppImages** en Linux, integrándolas en el menú de aplicaciones del sistema (lanzador `.desktop` + icono) sin depender de AppImageLauncher.
+Universal AppImage Installer (`uai`) is an interactive terminal user interface (TUI) application written in Rust designed to download, inspect, install, and manage **AppImage** packages on Linux systems. It seamlessly integrates standalone binaries into your desktop environment with proper `.desktop` application launchers and high-resolution system icons, without requiring external daemon-based tools such as AppImageLauncher.
 
-Nació para instalar el cliente de escritorio de **ClickUp**, pero el catálogo es un archivo JSON editable al que se le pueden agregar más aplicaciones.
-
----
-
-## Características
-
-- **Descargar** AppImages desde un catálogo JSON (clave/valor) usando `curl`, respetando el nombre de archivo que envía el servidor.
-- **Instalar** cualquier `.AppImage` que esté en `~/.applications`:
-  - Extrae el AppImage (`--appimage-extract`) en una carpeta temporal para leer su `.desktop` interno **sin ejecutar la aplicación**.
-  - Detecta automáticamente nombre, versión, icono, `StartupWMClass` y `MimeType`.
-  - Copia el AppImage a un directorio de instalación propio, instala el icono en el tema `hicolor` y crea el lanzador `.desktop`.
-  - **Modo avanzado** para personalizar nombre, versión y la limpieza posterior.
-- **Actualizar**: lista las aplicaciones instaladas (nombre, versión, fecha, ruta). *Por ahora solo es informativo.*
-- **Eliminar**: desinstala una aplicación (AppImage, lanzador e icono) previa confirmación.
-- **Ayuda** integrada dentro de la TUI.
-- Banner con arcoíris usando `figlet` (opcional).
+Originally conceived to streamline the installation of desktop applications like ClickUp, `uai` features an extensible, JSON-driven catalog system capable of downloading and managing any AppImage distribution.
 
 ---
 
-## Requisitos
+## Interface Showcase
 
-| Requisito | Uso | ¿Obligatorio? |
-|---|---|---|
-| Linux | Uso de permisos Unix, rutas XDG y AppImages | Sí |
-| Rust **estable más reciente** (fijado en `rust-toolchain.toml`; mínimo 1.85 por la edición 2024) | Compilar el proyecto | Sí (para compilar) |
-| `curl` ≥ 7.83 | Descargas (usa la opción `--clobber`) | Sí, para descargar |
-| `figlet` con la fuente `pagga` | Banner del título | No (si falta, se muestra un título en negrita) |
+| Main Menu | Catalog Downloads |
+|:---:|:---:|
+| ![Main Menu](docs/images/main_menu.png) | ![Download Screen](docs/images/download_screen.png) |
 
-> La fuente `pagga` viene normalmente con el paquete `toilet` (p. ej. `sudo apt install figlet toilet`).
+| Installation Selection | Integrated Help System |
+|:---:|:---:|
+| ![Install Screen](docs/images/install_screen.png) | ![Help Screen](docs/images/help_screen.png) |
 
 ---
 
-## Compilación e instalación
+## Key Features
 
-El programa no tiene rutas fijas de ninguna máquina: todo se calcula a partir del `$HOME` del usuario que lo ejecuta, y las carpetas que falten se crean solas en el primer arranque. No necesita `sudo`.
+- **Built-in Catalog & Downloads**: Download AppImages directly from an editable JSON catalog via `curl`, displaying real-time download progress and preserving server-provided filenames.
+- **Zero-Execution Metadata Inspection**: Extracts the AppImage payload via `--appimage-extract` into an isolated temporary directory to read the embedded `.desktop` file and icon assets without ever executing untrusted application binaries.
+- **Automated Metadata Extraction**: Accurately detects `Name`, `Version` (from `X-AppImage-Version` or filename patterns), `Icon`, `StartupWMClass`, and `MimeType`.
+- **Seamless Desktop Integration**: Installs binaries into dedicated user paths (`~/.applications/installed/`), extracts the best matching icon into the `hicolor` theme directory, and writes compliant XDG `.desktop` launchers to `~/.local/share/applications/`.
+- **Window Manager & Dock Association**: Links `StartupWMClass` so modern Wayland and X11 compositors (Hyprland, GNOME Shell, KDE Plasma) correctly bind running windows to their taskbar/dock launchers.
+- **Advanced Configuration Mode**: Fine-grained control to override the display name, version tag, temporary directory cleanup, or source file retention.
+- **Clean Uninstallation**: Removes installed AppImage binaries, generated desktop launchers, and associated icons cleanly after user confirmation.
+- **Safe Directory Separation**: Uses `~/.applications` instead of `~/Applications` to prevent conflicts or race conditions with external background watchers like `appimagelauncherd`.
+
+---
+
+## Requirements
+
+| Component | Requirement | Mandatory | Purpose |
+|---|---|---|---|
+| OS | Linux (x86_64 / aarch64) | Yes | POSIX permissions, XDG Base Directory specification |
+| Rust | Stable toolchain (Edition 2024, Rust 1.85+) | Yes (for compilation) | Project compilation and optimization |
+| `curl` | Version 7.83 or later | Yes | HTTP file downloads supporting `--clobber` |
+| `figlet` / `toilet` | With `pagga` font | No (optional) | Multi-color rainbow ASCII title banner (falls back to bold text) |
+
+On Debian/Ubuntu systems, optional banner dependencies can be installed via:
 
 ```bash
-# 1. Instalar Rust si no está disponible (https://rustup.rs)
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# 2. Dependencias del sistema (ejemplo para Debian/Ubuntu)
 sudo apt install curl figlet toilet
+```
 
-# 3. Asegurar la última versión estable de Rust
-rustup update stable
+---
 
-# 4. Compilar e instalar el binario en ~/.cargo/bin (queda en el PATH)
+## Building and Installation
+
+`uai` uses no hardcoded paths; all target directories are dynamically derived from standard user directories via the `dirs` crate and created automatically on the first run without needing root (`sudo`) privileges.
+
+### 1. Build and Install via Cargo
+
+```bash
+# Clone the repository
+git clone https://github.com/zer0sh/universal-appimage-installer.git
+cd universal-appimage-installer
+
+# Build and install directly to ~/.cargo/bin
 cargo install --path .
+```
 
-# 5. Ejecutar
+Ensure `~/.cargo/bin` is present in your shell `$PATH`.
+
+### 2. Manual Release Compilation
+
+```bash
+# Compile with optimizations and Link-Time Optimization (LTO)
+cargo build --release
+
+# The compiled binary will be placed at target/release/uai
+./target/release/uai
+
+# Optionally copy the binary to your local user binary directory
+install -Dm755 target/release/uai ~/.local/bin/uai
+```
+
+---
+
+## Usage and Navigation
+
+Launch the TUI by running:
+
+```bash
 uai
 ```
 
-El archivo `rust-toolchain.toml` fija el canal `stable` (con `rustfmt` y `clippy`), así que dentro del proyecto rustup siempre usa el toolchain estable instalado, y lo descarga si falta. Para pasar a la última versión estable publicada basta con `rustup update stable`. El proyecto está probado con Rust 1.98.1.
+### Controls
 
-Alternativa sin `cargo install`:
-
-```bash
-cargo build --release          # compila con LTO
-./target/release/uai           # ejecuta directamente
-install -Dm755 target/release/uai ~/.local/bin/uai   # opcional: añadir al PATH
-```
-
-También se puede ejecutar directamente con:
-
-```bash
-cargo run --release
-```
-
----
-
-## Uso
-
-Al iniciar se muestra el menú principal:
-
-```
-Descargar AppImage
-Instalar
-Actualizar
-Eliminar
-Ayuda
-Salir
-```
-
-### Controles
-
-| Tecla | Acción |
+| Key | Action |
 |---|---|
-| `↑` / `↓` | Mover la selección (o hacer scroll en la ayuda) |
-| `Enter` | Confirmar / activar |
-| `Esc` | Volver a la pantalla anterior |
-| `q` | Salir (desde el menú principal) |
-| `d` | Eliminar la app seleccionada (pantalla *Eliminar*) |
-| `y` / `n` | Confirmar / cancelar la eliminación |
-| Cualquier tecla | Cerrar avisos y la pantalla de resultado de instalación |
+| `Up` / `Down` | Move menu selection or scroll help text |
+| `Enter` | Confirm selection or execute current action |
+| `Esc` | Return to previous screen or cancel |
+| `q` | Quit application (from the main menu) |
+| `d` | Trigger deletion for selected installed application |
+| `y` / `n` | Confirm or reject prompt dialogs |
+| Any Key | Dismiss toast messages and result screens |
 
-### Flujo típico
+### Typical Workflow
 
-1. **Descargar AppImage** → seleccionar la app del catálogo → `Enter`. La TUI se oculta temporalmente para mostrar la barra de progreso de `curl` y el archivo queda en `~/.applications`.
-2. **Instalar** → elegir el `.AppImage` descargado → `Enter`. Se extrae y se muestra la pantalla de configuración.
-3. En la configuración, elegir **Install now** para instalar con los valores detectados, o activar **Advanced mode** para ajustar:
-
-   | Opción | Descripción | Valor por defecto |
-   |---|---|---|
-   | Custom name | Nombre que aparece en el menú de aplicaciones | Detectado del `.desktop` interno (o nombre del archivo) |
-   | Custom version | Versión usada en el nombre del archivo instalado | `X-AppImage-Version` o versión deducida del nombre del archivo (o `unknown`) |
-   | Delete temp folder | Borrar la carpeta de extracción tras instalar | **ON** |
-   | Delete source .AppImage | Borrar el archivo original de `~/.applications` | **OFF** |
-
-4. La app aparece en el menú de aplicaciones del sistema.
+1. **Download AppImage**: Navigate to `Download AppImage`, pick an application from the catalog, and press `Enter`. The TUI temporarily yields terminal control to `curl` to display download progress, placing the resulting binary in `~/.applications/`.
+2. **Install**: Select `Install` to view all uninstalled AppImages located in `~/.applications/`. Selecting an item extracts its internal metadata without executing the application.
+3. **Configure**: Choose **Install now** to apply default extracted metadata, or toggle **Advanced mode** to configure custom overrides:
+   - **Custom Name**: Display name used in the desktop launcher.
+   - **Custom Version**: Version string embedded in the target filename.
+   - **Delete Temp Folder**: Purge extracted squashfs contents after install (default: ON).
+   - **Delete Source AppImage**: Remove the uninstalled copy from `~/.applications/` (default: OFF).
+4. **Delete**: Browse installed packages, inspect installation timestamps, and press `d` or `Enter` followed by `y` to uninstall.
 
 ---
 
-## Rutas utilizadas
+## Path Specifications
 
-Las rutas se resuelven con el crate `dirs` (estándar XDG) y se crean automáticamente en el primer arranque.
+Paths follow the XDG Base Directory specification:
 
-| Ruta | Contenido |
+| Location | Description |
 |---|---|
-| `~/.config/universal-appimage-installer/apps.json` | Catálogo de aplicaciones descargables (editable) |
-| `~/.local/share/universal-appimage-installer/installed.json` | Registro de aplicaciones instaladas |
-| `~/.applications/` | AppImages descargados, listos para instalar |
-| `~/.applications/installed/` | AppImages instalados (`<Nombre>-<versión>.AppImage`) |
-| `~/.applications/.tmp/install-<fecha>/` | Extracción temporal (se limpia al entrar a *Instalar*) |
-| `~/.local/share/applications/<Nombre>.desktop` | Lanzador generado |
-| `~/.local/share/icons/hicolor/512x512/apps/` | Icono instalado |
-
-> **¿Por qué `~/.applications` y no `~/Applications`?** AppImageLauncher (si está instalado) vigila `~/Applications` con `appimagelauncherd` e integra automáticamente todo lo que se copia ahí, creando un `.desktop` competidor. La carpeta oculta `~/.applications` no está vigilada, así que se evita esa condición de carrera.
->
-> La pantalla *Instalar* solo lista los `.AppImage` que están directamente en `~/.applications`; las copias de `installed/` no aparecen.
+| `~/.config/universal-appimage-installer/apps.json` | Local user catalog of downloadable applications |
+| `~/.local/share/universal-appimage-installer/installed.json` | Registry tracking installed applications and paths |
+| `~/.applications/` | Default download directory for uninstalled AppImages |
+| `~/.applications/installed/` | Target location for installed AppImages (`<Name>-<Version>.AppImage`) |
+| `~/.applications/.tmp/install-<timestamp>/` | Temporary directory used for squashfs extraction and inspection |
+| `~/.local/share/applications/<Name>.desktop` | Standard generated desktop application launcher |
+| `~/.local/share/icons/hicolor/512x512/apps/` | Extracted application icon |
 
 ---
 
-## Catálogo de aplicaciones
+## Extending the Catalog
 
-El catálogo por defecto está en [`data/apps.json`](data/apps.json) y se **embebe en el binario** (`include_str!`). En el primer arranque se copia a `~/.config/universal-appimage-installer/apps.json`; a partir de ahí se usa esa copia, por lo que se puede editar libremente.
-
-Formato: un mapa donde la clave es un identificador corto.
+The default catalog is defined in [`data/apps.json`](data/apps.json) and embedded directly into the binary. On the first launch, it is copied to `~/.config/universal-appimage-installer/apps.json`. You can add new applications by editing this file:
 
 ```json
 {
@@ -153,118 +145,41 @@ Formato: un mapa donde la clave es un identificador corto.
 }
 ```
 
-| Campo | Obligatorio | Descripción |
-|---|---|---|
-| `name` | Sí | Nombre visible |
-| `download_url` | Sí | URL de descarga (se siguen redirecciones) |
-| `category` | No | Categoría (se muestra `misc` si está vacía) |
-| `description` | No | Descripción (si está vacía se muestra `homepage`) |
-| `homepage` | No | Página del proyecto |
+### Schema
 
-> Modificar `data/apps.json` solo afecta a instalaciones nuevas. Si el archivo ya existe en `~/.config/...`, hay que editarlo allí (o borrarlo para regenerarlo).
+- `name` (string, required): Human-readable name.
+- `download_url` (string, required): Direct download URL (HTTP redirects are followed).
+- `category` (string, optional): Application category.
+- `description` (string, optional): Short summary.
+- `homepage` (string, optional): Official website link.
 
 ---
 
-## Detalles de la instalación
-
-### Detección de metadatos
-
-Del `.desktop` interno del AppImage se leen `Name`, `X-AppImage-Version`, `Icon`, `StartupWMClass` y `MimeType`. Si no hay versión, se intenta deducir del nombre del archivo (p. ej. `desktop-3.5.343x86_64.AppImage` → `3.5.343`).
-
-### Búsqueda del icono
-
-1. `<Icon>.{png,svg,xpm}` en la raíz de `squashfs-root`.
-2. En `usr/share/icons` y `usr/share/pixmaps`, priorizando SVG y luego la resolución más alta.
-3. Como último recurso, `.DirIcon`.
-
-El icono se instala con el nombre de `StartupWMClass` en minúsculas (o el nombre de la app). Además, se **sobrescriben los iconos con ese mismo nombre** en los temas locales (`~/.local/share/icons` y `~/.icons`) para que docks o bandejas que resuelven el icono por nombre (ignorando `Icon=<ruta>`) muestren el correcto. Los SVG se reemplazan por un SVG que envuelve el PNG en base64.
-
-### Lanzador generado
-
-```ini
-[Desktop Entry]
-Type=Application
-Name=<nombre>
-Comment=Installed with Universal AppImage Installer
-Exec="<ruta al AppImage>" %U
-TryExec=<ruta al AppImage>
-Icon=<ruta al icono>
-Terminal=false
-Categories=Utility;
-StartupWMClass=<si existe>
-MimeType=<si existe>
-X-AppImage-Version=<versión>
-```
-
-`StartupWMClass` es clave para que el gestor de ventanas asocie la ventana en ejecución con el lanzador y muestre el icono correcto en la barra de tareas / alt-tab.
-
-### Limpieza
-
-Las carpetas extraídas (`squashfs-root`) suelen contener directorios de solo lectura; si `remove_dir_all` falla, se corrigen los permisos recursivamente y se reintenta. Las carpetas temporales huérfanas de ejecuciones interrumpidas se eliminan al entrar a *Instalar*.
-
----
-
-## Estructura del proyecto
+## Project Structure
 
 ```
 .
-├── Cargo.toml            # Paquete "universal-appimage-installer", binario "uai"
-├── rust-toolchain.toml   # Fija el toolchain al canal stable de Rust
-├── data/
-│   └── apps.json         # Catálogo por defecto (embebido en el binario)
-├── appimage/             # AppImage de ClickUp de ejemplo (no lo usa el código; ignorado por git)
-└── src/
-    ├── main.rs           # Punto de entrada, bucle de eventos y manejo de teclas
-    ├── app.rs            # Estado de la aplicación y pantallas (máquina de estados)
-    ├── ui.rs             # Renderizado de cada pantalla con ratatui + texto de ayuda
-    ├── banner.rs         # Banner con figlet coloreado en arcoíris
-    ├── config.rs         # Descubrimiento y creación de rutas XDG
-    ├── catalog.rs        # Carga del catálogo apps.json
-    ├── downloader.rs     # Descarga con curl
-    ├── appimage.rs       # Extracción, detección de metadatos, instalación y desinstalación
-    └── registry.rs       # Registro de apps instaladas (installed.json)
+|-- Cargo.lock
+|-- Cargo.toml              # Package definition and dependencies
+|-- rust-toolchain.toml     # Rust edition and toolchain configuration
+|-- data/
+|   `-- apps.json           # Embedded default catalog
+|-- docs/
+|   `-- images/             # Visual documentation and screenshots
+`-- src/
+    |-- main.rs             # Application entrypoint, event loop, crossterm terminal setup
+    |-- app.rs              # State management and screen state machine
+    |-- ui.rs               # Ratatui rendering logic and view layouts
+    |-- banner.rs           # Figlet integration and rainbow text colorization
+    |-- config.rs           # XDG path discovery and creation
+    |-- catalog.rs          # Catalog parsing and loading
+    |-- downloader.rs       # External curl downloader integration
+    |-- appimage.rs         # Extraction, metadata parsing, file management, and uninstaller
+    `-- registry.rs         # JSON database tracking installed applications
 ```
-
-### Dependencias
-
-| Crate | Uso |
-|---|---|
-| `ratatui` 0.29 | Interfaz de terminal |
-| `crossterm` 0.28 | Backend de terminal y eventos de teclado |
-| `serde` / `serde_json` | Lectura/escritura de catálogo y registro |
-| `anyhow` | Manejo de errores |
-| `chrono` | Marcas de tiempo (carpetas temporales y fecha de instalación) |
-| `dirs` | Rutas XDG del usuario |
-| `base64` | Envolver PNG en SVG al sobrescribir iconos de temas |
 
 ---
 
-## Registro de aplicaciones instaladas
+## License
 
-`installed.json` es un arreglo JSON:
-
-```json
-[
-  {
-    "name": "ClickUp",
-    "version": "3.5.343",
-    "appimage_path": "/home/usuario/.applications/installed/ClickUp-3.5.343.AppImage",
-    "desktop_path": "/home/usuario/.local/share/applications/ClickUp.desktop",
-    "icon_path": "/home/usuario/.local/share/icons/hicolor/512x512/apps/clickup.png",
-    "installed_at": "2026-09-23 00:22:16"
-  }
-]
-```
-
-Reinstalar el mismo AppImage (misma ruta de destino) reemplaza la entrada existente.
-
----
-
-## Limitaciones conocidas
-
-- **Actualizar** no busca ni aplica actualizaciones; solo lista lo instalado.
-- Al desinstalar no se restauran los iconos de temas que fueron sobrescritos durante la instalación.
-- Todas las apps se registran con `Categories=Utility;`.
-- Solo funciona en sistemas Unix/Linux (usa permisos POSIX).
-- La interfaz está mayoritariamente en inglés (el menú principal está en español).
-- Las instalaciones hechas con versiones anteriores (en `~/.local/share/universal-appimage-installer/apps/`, con descargas en `~/AppImages`) no se migran solas. Siguen funcionando y se pueden desinstalar desde *Eliminar*, porque el registro guarda rutas absolutas; para moverlas a la nueva ubicación basta con eliminarlas y volver a instalarlas.
+This project is licensed under the standard MIT License or Apache-2.0.
